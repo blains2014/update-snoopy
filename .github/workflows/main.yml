@@ -1,0 +1,45 @@
+name: Build Windows VST3 & Installer
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Clone JUCE
+        run: |
+          git clone --depth 1 --branch 8.0.4 https://github.com/juce-framework/JUCE.git JUCE
+
+      - name: Configure CMake
+        run: |
+          cmake -B build -G "Visual Studio 17 2022" -A x64
+
+      - name: Build VST3 & Standalone (Release)
+        run: |
+          cmake --build build --config Release --parallel
+
+      - name: Stage Installer Files
+        run: |
+          mkdir stage
+          Copy-Item -Recurse "build\OSOTRUXE_artefacts\Release\VST3\OSOTRUXE.vst3" "stage\OSOTRUXE.vst3"
+
+      - name: Build Inno Setup Installer
+        run: |
+          iscc OSOTRUXE.iss
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: OSOTRUXE-Windows-VST3
+          path: |
+            stage\OSOTRUXE.vst3
+            Output\OSOTRUXE_Windows_Installer.exe
